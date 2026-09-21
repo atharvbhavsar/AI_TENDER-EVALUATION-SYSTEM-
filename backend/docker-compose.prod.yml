@@ -1,0 +1,222 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crpf_tender_postgres_prod
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-tender_evaluation}
+      - POSTGRES_USER=${POSTGRES_USER:-crpf_app_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Database password must be set in environment}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crpf_app_user} -d ${POSTGRES_DB:-tender_evaluation}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4096M
+        reservations:
+          cpus: '0.5'
+          memory: 1024M
+    networks:
+      - backend_internal
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: crpf_tender_minio_prod
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${S3_ACCESS_KEY:?Object storage access key must be set}
+      - MINIO_ROOT_PASSWORD=${S3_SECRET_KEY:?Object storage secret key must be set}
+    volumes:
+      - minio_prod_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2048M
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    networks:
+      - backend_internal
+
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: crpf_tender_opa_prod
+    restart: always
+    command:
+      - "run"
+      - "--server"
+      - "--log-level=info"
+      - "/policies"
+    volumes:
+      - ./app/rules/rego:/policies:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8181/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    networks:
+      - backend_internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crpf_tender_backend_prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      opa:
+        condition: service_healthy
+    environment:
+      - APP_NAME=CRPF Tender Evaluation API
+      - APP_VERSION=0.1.0
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - API_V1_PREFIX=/api/v1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-crpf_app_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tender_evaluation}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-10}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-20}
+      - DB_POOL_TIMEOUT=${DB_POOL_TIMEOUT:-30}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-1800}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT secret key must be set in environment}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - MIN_PASSWORD_LENGTH=8
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:?S3 access key must be set}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:?S3 secret key must be set}
+      - S3_BUCKET=${S3_BUCKET:-tender-documents}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_USE_SSL=False
+      - MAX_UPLOAD_SIZE_MB=50
+      - OPA_ENABLED=True
+      - OPA_URL=http://opa:8181
+      - OPA_POLICY_PACKAGE=crpf.evaluation
+      - OPA_TIMEOUT_SECONDS=10
+      - RATE_LIMIT_ENABLED=True
+      - RATE_LIMIT_LOGIN_PER_MINUTE=10
+      - RATE_LIMIT_UPLOAD_PER_MINUTE=20
+      - RATE_LIMIT_REPORT_PER_MINUTE=15
+      - RATE_LIMIT_DEFAULT_PER_MINUTE=120
+      - CORS_ORIGINS=${CORS_ORIGINS:-["https://tender.crpf.gov.in"]}
+      - CORS_ALLOW_CREDENTIALS=True
+      - SECURITY_HEADERS_ENABLED=True
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - backend_internal
+      - frontend_network
+
+  document-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crpf_tender_document_worker_prod
+    restart: always
+    command: ["python", "-m", "app.workers.document_worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      - APP_NAME=CRPF Tender Document Worker
+      - APP_VERSION=0.1.0
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-crpf_app_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tender_evaluation}
+      - DB_POOL_SIZE=5
+      - DB_MAX_OVERFLOW=10
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:?S3 access key must be set}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:?S3 secret key must be set}
+      - S3_BUCKET=${S3_BUCKET:-tender-documents}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_USE_SSL=False
+      - WORKER_POLL_INTERVAL_SECONDS=2.0
+      - MAX_JOB_ATTEMPTS=3
+      - PROCESSING_TIMEOUT_SECONDS=120
+      - MAX_DOCUMENT_PAGES=200
+      - MAX_IMAGE_PIXELS=50000000
+      - OPA_ENABLED=True
+      - OPA_URL=http://opa:8181
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3072M
+        reservations:
+          cpus: '0.5'
+          memory: 1024M
+    networks:
+      - backend_internal
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: crpf_tender_nginx_prod
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    networks:
+      - frontend_network
+
+volumes:
+  postgres_prod_data:
+  minio_prod_data:
+
+networks:
+  backend_internal:
+    internal: true
+  frontend_network:
+    internal: false

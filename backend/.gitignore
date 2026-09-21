@@ -1,0 +1,32 @@
+# Environment and secrets
+.env
+.env.*
+*.env
+*.env.*
+*.env.local
+*.env.production
+!.env.example
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Python Bytecode and Caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# Databases and logs
+*.log
+*.sqlite3
+*.db
+.paddlex/
+celerybeat-schedule*

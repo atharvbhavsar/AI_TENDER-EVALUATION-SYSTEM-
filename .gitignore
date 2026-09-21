@@ -1,0 +1,63 @@
+# ==============================================================================
+# Git Ignore Configuration - AI Tender Evaluation Platform
+# ==============================================================================
+
+# 1. Environment and Secrets (CRITICAL: NEVER COMMIT)
+.env
+.env.*
+*.env
+*.env.*
+*.env.local
+*.env.development
+*.env.production
+*.env.test
+!.env.example
+
+# 2. Python Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# 3. Python Bytecode and Caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 4. Distribution and Packaging
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+
+# 5. Testing and Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# 6. Type Checking and Linters
+.mypy_cache/
+.ruff_cache/
+
+# 7. Local Logs, Databases, and Temporary Storage
+*.log
+*.sqlite
+*.sqlite3
+*.db
+celerybeat-schedule*
+celerybeat.pid
+.paddlex/
+
+# 8. OS Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 9. Scratch and Local Artifacts
+scratch/

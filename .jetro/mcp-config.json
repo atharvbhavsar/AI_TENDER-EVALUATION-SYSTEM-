@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "jetro": {
+      "command": "C:\\Users\\athar\\.jetro\\runtime\\node-win32-x64.exe",
+      "args": [
+        "C:\\Users\\athar\\.jetro\\mcp-server\\index.js"
+      ],
+      "env": {
+        "JET_WORKSPACE": "d:\\tender",
+        "JET_API_URL": "https://api.jetro.ai",
+        "PATH": "C:\\Users\\athar\\.jetro\\runtime;C:\\Program Files\\Common Files\\Oracle\\Java\\javapath;C:\\windows\\system32;C:\\windows;C:\\windows\\System32\\Wbem;C:\\windows\\System32\\WindowsPowerShell\\v1.0\\;C:\\windows\\System32\\OpenSSH\\;C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common;C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR;C:\\WINDOWS\\system32;C:\\WINDOWS;C:\\WINDOWS\\System32\\Wbem;C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\;C:\\WINDOWS\\System32\\OpenSSH\\;C:\\MinGW\\bin;C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin;C:\\Program Files\\Docker\\Docker\\resources\\bin;C:\\Program Files\\RedHat\\Podman\\;C:\\Program Files\\nodejs\\;C:\\Program Files\\Git\\cmd;C:\\Program Files\\MySQL\\MySQL Router 8.0\\bin;C:\\Program Files\\GitHub CLI\\;C:\\Users\\athar\\scoop\\shims;C:\\Program Files\\MySQL\\MySQL Shell 8.0\\bin\\;C:\\Users\\athar\\AppData\\Local\\Programs\\Python\\Python311\\Scripts\\;C:\\Users\\athar\\AppData\\Local\\Programs\\Python\\Python311\\;C:\\Users\\athar\\AppData\\Local\\Programs\\Python\\Launcher\\;C:\\Users\\athar\\anaconda3;C:\\Users\\athar\\anaconda3\\Library\\mingw-w64\\bin;C:\\Users\\athar\\anaconda3\\Library\\usr\\bin;C:\\Users\\athar\\anaconda3\\Library\\bin;C:\\Users\\athar\\anaconda3\\Scripts;C:\\Users\\athar\\AppData\\Local\\Microsoft\\WindowsApps;C:\\Users\\athar\\AppData\\Local\\Programs\\Microsoft VS Code\\bin;C:\\Users\\athar\\AppData\\Local\\Microsoft\\WinGet\\Links;C:\\Users\\athar\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Astronomer.Astro_*\\astro;C:\\Users\\athar\\AppData\\Roaming\\npm;D:\\flutter\\bin;C:\\Users\\athar\\AppData\\Local\\Programs\\Ollama;C:\\Users\\athar\\.local\\bin;C:\\Users\\athar\\AppData\\Local\\Microsoft\\WinGet\\Packages\\oschwartz10612.Poppler_Microsoft.Winget.Source_8wekyb3d8bbwe\\poppler-25.07.0\\Library\\bin;D:\\cursor\\resources\\app\\bin;C:\\Users\\athar\\AppData\\Local\\Programs\\Windsurf\\bin;D:\\Antigravity\\bin;C:\\Users\\athar\\AppData\\Local\\Programs\\Antigravity IDE\\bin;"
+      }
+    }
+  }
+}

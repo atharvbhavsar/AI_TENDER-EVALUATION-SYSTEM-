@@ -1,0 +1,150 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: crpf_tender_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=tender_evaluation
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tender_evaluation"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: crpf_tender_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "/usr/bin/curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  redis:
+    image: redis:7-alpine
+    container_name: crpf_tender_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crpf_tender_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=CRPF Tender Evaluation API
+      - APP_VERSION=0.1.0
+      - ENVIRONMENT=development
+      - DEBUG=True
+      - API_V1_PREFIX=/api/v1
+      - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/tender_evaluation
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_BUCKET=tender-documents
+      - S3_REGION=us-east-1
+      - S3_USE_SSL=False
+      - MAX_UPLOAD_SIZE_MB=50
+      - REDIS_URL=redis://redis:6379/0
+      - WORKER_CONCURRENCY=3
+      - WORKER_MAX_RETRIES=3
+      - WORKER_TIMEOUT_SECONDS=300
+      - OPA_URL=http://opa:8181
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  document-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crpf_tender_document_worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.document_worker"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - APP_NAME=CRPF Tender Document Worker
+      - APP_VERSION=0.1.0
+      - ENVIRONMENT=development
+      - DEBUG=True
+      - LOG_LEVEL=INFO
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/tender_evaluation
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - S3_BUCKET=tender-documents
+      - S3_REGION=us-east-1
+      - S3_USE_SSL=False
+      - REDIS_URL=redis://redis:6379/0
+      - WORKER_CONCURRENCY=3
+      - WORKER_MAX_RETRIES=3
+      - WORKER_TIMEOUT_SECONDS=300
+      - WORKER_POLL_INTERVAL_SECONDS=2
+      - MAX_JOB_ATTEMPTS=3
+      - OPA_URL=http://opa:8181
+
+  opa:
+    image: openpolicyagent/opa:latest
+    container_name: crpf_tender_opa
+    restart: unless-stopped
+    command:
+      - "run"
+      - "--server"
+      - "--log-level=info"
+      - "/policies"
+    volumes:
+      - ./app/rules/rego:/policies:ro
+    ports:
+      - "8181:8181"
+
+volumes:
+  postgres_data:
+  minio_data:
+  redis_data:
