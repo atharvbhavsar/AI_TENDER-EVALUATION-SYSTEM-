@@ -44,6 +44,7 @@ def create_tender(
         description=payload.description.strip() if payload.description else None,
         issuing_authority=payload.issuing_authority.strip(),
         status=TenderStatus.DRAFT,
+        submission_deadline=payload.submission_deadline,
         created_by=user_id,
     )
 
@@ -115,6 +116,8 @@ def update_tender(
         tender.issuing_authority = payload.issuing_authority.strip()
     if payload.status is not None:
         tender.status = payload.status
+    if payload.submission_deadline is not None:
+        tender.submission_deadline = payload.submission_deadline
 
     try:
         db.commit()
@@ -206,5 +209,81 @@ def get_tender_version(
     stmt = select(TenderVersion).where(
         TenderVersion.tender_id == tender_id,
         TenderVersion.version_number == version_number,
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def publish_tender(
+    db: Session,
+    tender_id: uuid.UUID,
+) -> Tender:
+    """Transition tender status from DRAFT to PUBLISHED atomically."""
+    tender = get_tender(db, tender_id)
+    if not tender:
+        raise KeyError(f"Tender '{tender_id}' not found")
+
+    if tender.status == TenderStatus.PUBLISHED:
+        return tender
+
+    if not tender.active_version:
+        raise ValueError("Cannot publish tender without an active version.")
+
+    tender.status = TenderStatus.PUBLISHED
+    try:
+        db.commit()
+        db.refresh(tender)
+        return tender
+    except Exception:
+        db.rollback()
+        raise
+
+
+def list_public_tenders(
+    db: Session,
+    search: Optional[str] = None,
+    status_filter: Optional[TenderStatus] = None,
+    page: int = 1,
+    page_size: int = 10,
+) -> Tuple[List[Tender], int, int]:
+    """List tenders that are publicly accessible (PUBLISHED or CLOSED), with optional search."""
+    base_query = select(Tender)
+
+    # Public visibility rule: only PUBLISHED and CLOSED tenders are visible publicly
+    if status_filter and status_filter in [TenderStatus.PUBLISHED, TenderStatus.CLOSED]:
+        base_query = base_query.where(Tender.status == status_filter)
+    else:
+        base_query = base_query.where(
+            Tender.status.in_([TenderStatus.PUBLISHED, TenderStatus.CLOSED])
+        )
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        base_query = base_query.where(
+            (Tender.tender_number.ilike(term)) | (Tender.title.ilike(term))
+        )
+
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total = db.execute(count_query).scalar_one()
+    total_pages = math.ceil(total / page_size) if total > 0 else 1
+
+    offset = (page - 1) * page_size
+    stmt = (
+        base_query
+        .order_by(Tender.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
+    items = db.execute(stmt).scalars().all()
+    return list(items), total, total_pages
+
+
+def get_public_tender(
+    db: Session,
+    tender_id: uuid.UUID,
+) -> Optional[Tender]:
+    """Retrieve tender details for public portal. Only PUBLISHED or CLOSED tenders are returned."""
+    stmt = select(Tender).where(
+        Tender.id == tender_id,
+        Tender.status.in_([TenderStatus.PUBLISHED, TenderStatus.CLOSED]),
     )
     return db.execute(stmt).scalar_one_or_none()

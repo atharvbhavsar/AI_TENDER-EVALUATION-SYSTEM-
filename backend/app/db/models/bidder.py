@@ -41,6 +41,12 @@ class Bidder(Base):
     contact_phone: Mapped[Optional[str]] = mapped_column(
         String(50), nullable=True
     )
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

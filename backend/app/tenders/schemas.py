@@ -78,6 +78,10 @@ class TenderCreate(BaseModel):
         default="Original Tender Specification",
         description="Summary note for Version 1",
     )
+    submission_deadline: Optional[datetime.datetime] = Field(
+        default=None,
+        description="Official submission deadline (UTC)",
+    )
 
 
 class TenderUpdate(BaseModel):
@@ -103,6 +107,10 @@ class TenderUpdate(BaseModel):
         default=None,
         description="Lifecycle status transition (DRAFT, PUBLISHED, CLOSED, CANCELLED)",
     )
+    submission_deadline: Optional[datetime.datetime] = Field(
+        default=None,
+        description="Updated submission deadline (UTC)",
+    )
 
 
 class TenderResponse(BaseModel):
@@ -116,6 +124,7 @@ class TenderResponse(BaseModel):
     description: Optional[str] = None
     issuing_authority: str
     status: TenderStatus
+    submission_deadline: Optional[datetime.datetime] = None
     created_by: uuid.UUID
     created_at: datetime.datetime
     updated_at: datetime.datetime

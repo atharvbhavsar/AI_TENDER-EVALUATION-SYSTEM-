@@ -60,6 +60,11 @@ ROLE_PERMISSIONS_MAPPING: Dict[str, List[str]] = {
         "REVIEW_CREATE",
         "REPORT_READ",
     ],
+    "BIDDER": [
+        "TENDER_READ",
+        "DOCUMENT_READ",
+        "BIDDER_READ",
+    ],
 }
 
 
@@ -124,6 +129,8 @@ def create_user(
     password: str,
     full_name: str,
     role_names: Sequence[str] | None = None,
+    company_name: str | None = None,
+    phone: str | None = None,
     is_active: bool = True,
 ) -> User:
     """Create a new user account with hashed password and role associations."""
@@ -134,6 +141,8 @@ def create_user(
         email=normalized,
         password_hash=pwd_hash,
         full_name=full_name.strip(),
+        company_name=company_name.strip() if company_name else None,
+        phone=phone.strip() if phone else None,
         is_active=is_active,
     )
 

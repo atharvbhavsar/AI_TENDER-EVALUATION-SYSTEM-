@@ -37,6 +37,9 @@ class S3ObjectStorageService(ObjectStorageService):
             "config": Config(
                 signature_version="s3v4",
                 s3={"addressing_style": "path"},
+                connect_timeout=2,
+                read_timeout=5,
+                retries={"max_attempts": 1},
             ),
         }
         if endpoint_url:
@@ -73,8 +76,9 @@ class S3ObjectStorageService(ObjectStorageService):
                     logger.error("Failed to create bucket '%s': %s", self.bucket_name, str(create_exc))
                     raise
             else:
-                logger.error("Error inspecting bucket '%s': %s", self.bucket_name, str(exc))
-                raise
+                logger.warning("Error inspecting bucket '%s': %s", self.bucket_name, str(exc))
+        except Exception as exc:
+            logger.warning("Bucket verification skipped or storage endpoint unreachable: %s", exc)
 
     def upload(
         self,

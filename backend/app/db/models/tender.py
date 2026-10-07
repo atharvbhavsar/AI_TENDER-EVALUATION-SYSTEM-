@@ -48,6 +48,9 @@ class Tender(Base):
         index=True,
         nullable=False,
     )
+    submission_deadline: Mapped[Optional[datetime.datetime]] = mapped_column(
+        DateTime(timezone=True), index=True, nullable=True
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.db.models.document_job import DocumentProcessingJob
     from app.db.models.processing_artifact import ProcessingArtifact
     from app.db.models.tender import Tender
+    from app.db.models.tender_criterion import TenderCriterion
     from app.db.models.tender_version import TenderVersion
     from app.db.models.user import User
 
@@ -71,6 +72,12 @@ class Document(Base):
     bid_submission_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("bid_submissions.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
+    )
+    criterion_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("tender_criteria.id", ondelete="SET NULL"),
         index=True,
         nullable=True,
     )
@@ -134,6 +141,10 @@ class Document(Base):
     submission: Mapped[Optional["BidSubmission"]] = relationship(
         "BidSubmission",
         back_populates="documents",
+        lazy="selectin",
+    )
+    criterion: Mapped[Optional["TenderCriterion"]] = relationship(
+        "TenderCriterion",
         lazy="selectin",
     )
     uploader: Mapped["User"] = relationship(

@@ -22,12 +22,16 @@ def upgrade() -> None:
     bind = op.get_bind()
     is_postgres = bind.dialect.name == "postgresql"
 
-    # 1. Enable pgvector extension if PostgreSQL
+    # 1. Enable pgvector extension if PostgreSQL and available
+    has_vector = False
     if is_postgres:
         try:
-            op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            available = bind.execute(sa.text("SELECT 1 FROM pg_available_extensions WHERE name = 'vector';")).scalar()
+            if available:
+                op.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+                has_vector = True
         except Exception:
-            pass
+            has_vector = False
 
     # 2. Create document_chunks table
     op.create_table(
@@ -49,7 +53,7 @@ def upgrade() -> None:
         sa.Column("bbox", sa.JSON(), nullable=True),
         sa.Column("source_reference", sa.String(length=255), nullable=True),
         sa.Column("tsv_content", TSVectorType(), nullable=True),
-        sa.Column("embedding", VectorType(1024), nullable=True),
+        sa.Column("embedding", VectorType(1024) if has_vector else sa.JSON(), nullable=True),
         sa.Column("embedding_model", sa.String(length=100), nullable=False, server_default="BAAI/bge-m3"),
         sa.Column("embedding_model_version", sa.String(length=50), nullable=False, server_default="v1.0"),
         sa.Column("indexer_version", sa.String(length=50), nullable=False, server_default="1.0.0"),
@@ -81,10 +85,11 @@ def upgrade() -> None:
         except Exception:
             pass
         # Vector index using HNSW (or IVFFlat)
-        try:
-            op.execute("CREATE INDEX IF NOT EXISTS ix_document_chunks_embedding_hnsw ON document_chunks USING hnsw (embedding vector_cosine_ops);")
-        except Exception:
-            pass
+        if has_vector:
+            try:
+                op.execute("CREATE INDEX IF NOT EXISTS ix_document_chunks_embedding_hnsw ON document_chunks USING hnsw (embedding vector_cosine_ops);")
+            except Exception:
+                pass
 
 
 

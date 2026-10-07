@@ -1,0 +1,1 @@
+"""Bidder Portal module package."""

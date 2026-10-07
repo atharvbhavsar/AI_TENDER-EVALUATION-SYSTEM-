@@ -61,3 +61,11 @@ desktop.ini
 
 # 9. Scratch and Local Artifacts
 scratch/
+
+# 10. Node.js & Frontend Artifacts
+node_modules/
+frontend/node_modules/
+.next/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo

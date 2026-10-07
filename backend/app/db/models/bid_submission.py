@@ -5,10 +5,13 @@ import enum
 import uuid
 from typing import TYPE_CHECKING, List, Optional
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
+    Numeric,
     String,
+    Text,
     UniqueConstraint,
     Uuid,
     func,
@@ -27,6 +30,8 @@ if TYPE_CHECKING:
 class SubmissionStatus(str, enum.Enum):
     """Controlled lifecycle statuses for a bidder submission."""
 
+    DRAFT = "DRAFT"
+    SUBMITTED = "SUBMITTED"
     RECEIVED = "RECEIVED"
     PROCESSING = "PROCESSING"
     READY = "READY"
@@ -64,10 +69,15 @@ class BidSubmission(Base):
     )
     status: Mapped[SubmissionStatus] = mapped_column(
         Enum(SubmissionStatus, name="submission_status_enum", native_enum=False),
-        default=SubmissionStatus.RECEIVED,
+        default=SubmissionStatus.DRAFT,
         index=True,
         nullable=False,
     )
+    bidder_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    commercial_quote: Mapped[Optional[float]] = mapped_column(Numeric(15, 2), nullable=True)
+    declaration_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    submitted_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

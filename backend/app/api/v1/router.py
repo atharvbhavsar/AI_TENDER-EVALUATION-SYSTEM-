@@ -5,6 +5,7 @@ from app.aggregation.api import router as aggregation_router
 from app.approval.api import router as approval_router
 from app.audit.api import router as audit_router
 from app.auth.router import router as auth_router
+from app.bidders.router import router as bidders_router
 from app.documents.router import router as documents_router
 from app.evidence.api import router as evidence_router
 from app.extraction.api import router as extraction_router
@@ -22,6 +23,7 @@ v1_router = APIRouter()
 # Include feature routers
 v1_router.include_router(health_router)
 v1_router.include_router(auth_router)
+v1_router.include_router(bidders_router)
 v1_router.include_router(tenders_router)
 v1_router.include_router(documents_router)
 v1_router.include_router(pipeline_router)
